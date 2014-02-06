@@ -21,6 +21,7 @@ extern          "C" {
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 }
+#include <boost/scope_exit.hpp>
 #include <avplay.h>
 #include <SDL.h>
 #include "sdl_render.h"
@@ -96,6 +97,11 @@ sdl_render::render_one_frame(AVFrame * frame, int pix_fmt)
 
 	m_yuv = SDL_CreateTexture(m_render, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STATIC,  m_image_width , m_image_height);
 
+	BOOST_SCOPE_EXIT(m_yuv)
+	{
+	    SDL_DestroyTexture(m_yuv);
+	}BOOST_SCOPE_EXIT_END
+
     SDL_UpdateYUVTexture(m_yuv, NULL, frame->data[0], frame->linesize[0],  frame->data[1], frame->linesize[1],  frame->data[2], frame->linesize[2]);
 	SDL_RenderCopy(m_render, m_yuv, NULL, &rect);
 	SDL_RenderPresent(m_render);
@@ -141,6 +147,7 @@ sdl_render::render_one_frame(AVFrame * frame, int pix_fmt)
 
     m_yuv->pixels = px; */
 
+
     return true;
 }
 
@@ -163,8 +170,6 @@ sdl_render::init_render(void *ctx, int w, int h, int pix_fmt)
 	SDL_InitSubSystem(SDL_INIT_VIDEO);
 
 	m_render = SDL_CreateRenderer(m_sdlwindow, -1, SDL_RENDERER_ACCELERATED);
-	
-//	m_yuv = SDL_CreateTexture(m_render,SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING);
 
     m_image_height = h;
     m_image_width = w;
@@ -179,7 +184,8 @@ void sdl_render::aspect_ratio(int srcw, int srch, bool enable_aspect)
 
 void sdl_render::destory_render()
 {
-
+	SDL_DestroyRenderer(m_render);
+	SDL_DestroyWindow(m_sdlwindow);
 }
 
 bool sdl_render::use_overlay()

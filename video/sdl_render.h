@@ -45,7 +45,6 @@ public:
 private:
 	SDL_Window * m_sdlwindow;
     SDL_Renderer * m_render;
-    SDL_Surface* sfc;
     boost::mutex	renderlock;
     int		m_pix_fmt;
     int	m_image_width, m_image_height;

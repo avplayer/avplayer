@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string>
 
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include <X11/Xlib.h>
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
@@ -24,8 +24,7 @@ int main ( int argc, char *argv[] )
 
     XInitThreads();
 
-    SDL_Init ( SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTTHREAD );
-
+    SDL_Init ( SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS );
 
     // 判断打开的媒体类型,
     // 根据媒体文件类型选择不同的方式打开.
@@ -58,8 +57,10 @@ int main ( int argc, char *argv[] )
     // 开始播放
     ply.play();
 
-    SDL_WM_SetCaption ( ( std::string ( "正在播放" ) + filename ).c_str(),
-                        "" );
+    //SDL_SetWindowTitle();
+
+    //SDL_WM_SetCaption ( ( std::string ( "正在播放" ) + filename ).c_str(),
+      //                  "" );
 
     while ( true )
     {
@@ -89,9 +90,10 @@ int main ( int argc, char *argv[] )
 					return 0;		 
 			}
         }
-        if ( event.type == SDL_VIDEORESIZE){
-			SDL_SetVideoMode(event.resize.w,event.resize.h,32,SDL_RESIZABLE);
-			ply.resize(event.resize.w,event.resize.h);
+        if ( event.type == SDL_WINDOWEVENT && event.window.event ==  SDL_WINDOWEVENT_RESIZED)
+		{
+//			SDL_SetVideoMode(event.resize.w,event.resize.h,32,SDL_RESIZABLE);
+	//		ply.resize(event.resize.w,event.resize.h);
 		}
     }
 

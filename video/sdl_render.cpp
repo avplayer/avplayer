@@ -22,7 +22,7 @@ extern          "C" {
 #include <libswscale/swscale.h>
 }
 #include <avplay.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include "sdl_render.h"
 #ifdef  __cplusplus
 extern          "C" {
@@ -83,11 +83,23 @@ EXPORT_API void sdl_destory_render(void *ctx)
 #endif
 
 bool
-sdl_render::render_one_frame(AVFrame * data, int pix_fmt)
+sdl_render::render_one_frame(AVFrame * frame, int pix_fmt)
 {
-    boost::mutex::scoped_lock l(renderlock);
 
-    SDL_Rect        rect;
+    SDL_Texture * m_yuv;
+    SDL_Rect        rect = {0};
+
+    rect.w = m_image_width;
+    rect.h = m_image_height;
+
+	boost::mutex::scoped_lock l(renderlock);
+
+	m_yuv = SDL_CreateTexture(m_render, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STATIC,  m_image_width , m_image_height);
+
+    SDL_UpdateYUVTexture(m_yuv, NULL, frame->data[0], frame->linesize[0],  frame->data[1], frame->linesize[1],  frame->data[2], frame->linesize[2]);
+	SDL_RenderCopy(m_render, m_yuv, NULL, &rect);
+	SDL_RenderPresent(m_render);
+/*
     AVPicture       pict = { {0} };
 
     uint8_t       **px = m_yuv->pixels;
@@ -119,7 +131,6 @@ sdl_render::render_one_frame(AVFrame * data, int pix_fmt)
     sws_scale(m_swsctx, pixels, linesize, 0, m_image_height, pict.data,
 	      pict.linesize);
 
-
     SDL_UnlockYUVOverlay(m_yuv);
     rect.x = 0;
     rect.y = 0;
@@ -128,7 +139,8 @@ sdl_render::render_one_frame(AVFrame * data, int pix_fmt)
 
     SDL_DisplayYUVOverlay(m_yuv, &rect);
 
-    m_yuv->pixels = px;
+    m_yuv->pixels = px; */
+
     return true;
 }
 
@@ -137,52 +149,40 @@ sdl_render::re_size(int w, int h)
 {
 	boost::mutex::scoped_lock l(renderlock);
 
-	//FIXME 
-	//resize 有办法传递全屏信息就好了
-	int fw, fh;
-	SDL_Rect** mode = SDL_ListModes(NULL,SDL_FULLSCREEN);
-	
-	fw = mode[0]->w ; fh =  mode[0]->h;
-
-	bool fs=false;
-	if ( w == fw && h == fh )
-		fs = true;
-	sfc = SDL_SetVideoMode(w, h, 32, fs?  SDL_FULLSCREEN : SDL_RESIZABLE);
-	SDL_FreeYUVOverlay(this->m_yuv);
-    this->m_yuv = SDL_CreateYUVOverlay(w, h, SDL_YV12_OVERLAY, sfc);
+	SDL_SetWindowSize(m_sdlwindow, w, h);
 }
 
 bool
 sdl_render::init_render(void *ctx, int w, int h, int pix_fmt)
 {
+	m_sdlwindow = (SDL_Window*)ctx;
     m_swsctx = NULL;
     m_pix_fmt = pix_fmt;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO))
 	SDL_InitSubSystem(SDL_INIT_VIDEO);
+
+	m_render = SDL_CreateRenderer(m_sdlwindow, -1, SDL_RENDERER_ACCELERATED);
 	
-	SDL_SetVideoMode(w, h, 32, SDL_RESIZABLE);
+//	m_yuv = SDL_CreateTexture(m_render,SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING);
 
     m_image_height = h;
     m_image_width = w;
     re_size(w, h);
-    return m_yuv;
+    return 1;
 }
 
-void
-sdl_render::aspect_ratio(int srcw, int srch, bool enable_aspect)
+void sdl_render::aspect_ratio(int srcw, int srch, bool enable_aspect)
 {
 
 }
 
-void
-sdl_render::destory_render()
+void sdl_render::destory_render()
 {
 
 }
 
-bool
-sdl_render::use_overlay()
+bool sdl_render::use_overlay()
 {
     return true;
 }

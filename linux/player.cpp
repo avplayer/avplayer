@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <cstdio>
 #include <stdint.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include <boost/filesystem.hpp>
 namespace fs=boost::filesystem;
 
@@ -227,7 +227,14 @@ int player::open(const char* movie, int media_type)
 void player::init_video(vo_context* vo)
 {
 	//创建第一个窗口
-	vo->user_data = SDL_SetVideoMode(800, 600, 32, SDL_RESIZABLE);
+	vo->user_data = (void*) SDL_CreateWindow(
+		"avplayer",
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		800,
+		600,
+		SDL_WINDOW_RESIZABLE
+	);
 
 	vo->init_video = sdl_init_video;
 	//m_draw_frame = sdl_render_one_frame;
@@ -296,14 +303,16 @@ void player::resize(int w, int h)
 
 void player::togglefs()
 {
-	if ( m_fs = ! m_fs ){
+	if ( m_fs != m_fs ){
 		m_avplay->m_video_st->codec->width;
 		m_avplay->m_video_st->codec->height;
 
-		this->resize(m_avplay->m_video_st->codec->width,m_avplay->m_video_st->codec->height);
+		//this->resize(m_avplay->m_video_st->codec->width,m_avplay->m_video_st->codec->height);
+
+		SDL_SetWindowFullscreen(reinterpret_cast<SDL_Window*>(m_video->user_data), 0);
+
 	}else{
-		SDL_Rect** mode = SDL_ListModes(NULL,SDL_FULLSCREEN);
-		this->resize(mode[0]->w, mode[0]->h);
+		SDL_SetWindowFullscreen(reinterpret_cast<SDL_Window*>(m_video->user_data), SDL_WINDOW_FULLSCREEN);
 	}
 }
 

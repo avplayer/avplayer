@@ -1,8 +1,8 @@
-find_package(SDL  REQUIRED)
+find_package(SDL2  REQUIRED)
 find_package(X11)
 find_package( Boost 1.50 COMPONENTS filesystem)
 
-include_directories(${SDL_INCLUDE_DIR})
+include_directories(${SDL2_INCLUDE_DIR})
 
 add_executable(avplayer player.cpp main.cpp)
 
@@ -13,7 +13,8 @@ if(bt)
 endif()
 
 target_link_libraries(avplayer ${X11_LIBRARIES})
-target_link_libraries(avplayer ${SDL_LIBRARY})
+target_link_libraries(avplayer ${SDL2_LIBRARIES})
 target_link_libraries(avplayer ${Boost_LIBRARIES})
+target_link_libraries(avplayer -pthread)
 
 INSTALL(TARGETS avplayer RUNTIME DESTINATION bin)

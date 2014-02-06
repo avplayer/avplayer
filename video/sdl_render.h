@@ -22,6 +22,7 @@
 
 #include "video_render.h"
 #include <boost/thread/pthread/mutex.hpp>
+#include <SDL_video.h>
 
 class sdl_render : public video_render
 {
@@ -42,7 +43,8 @@ public:
 	virtual void destory_render();
     virtual bool use_overlay();
 private:
-    SDL_Overlay* m_yuv;
+	SDL_Window * m_sdlwindow;
+    SDL_Renderer * m_render;
     SDL_Surface* sfc;
     boost::mutex	renderlock;
     int		m_pix_fmt;

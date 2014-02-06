@@ -110,8 +110,8 @@ typedef struct avplay
 	pthread_t m_read_pkt_thrd;
 
 	/* 重采样音频指针.	*/
-	struct SwsContext *m_swsctx;
-	struct SwrContext *m_swr_ctx;
+	struct SwsContext *m_swsctx_video;
+	struct SwrContext *m_swrctx_audio;
 	ReSampleContext *m_resample_ctx;
 
 	/* 音频和视频的AVStream、AVCodecContext指针和index.	*/

@@ -896,8 +896,8 @@ void av_stop(avplay *play)
 		avcodec_close(play->m_video_ctx);
 	if (play->m_format_ctx)
 		avformat_close_input(&play->m_format_ctx);
-	if (play->m_swr_ctx)
-		swr_free(&play->m_swr_ctx);
+	if (play->m_swrctx_audio)
+		swr_free(&play->m_swrctx_audio);
 	if (play->m_resample_ctx)
 		audio_resample_close(play->m_resample_ctx);
 #ifdef WIN32
@@ -1034,7 +1034,7 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 	dst->type = 0;
 
 	/* 备注: FFMIN(play->m_audio_ctx->channels, 2); 会有问题, 因为swr_alloc_set_opts的out_channel_layout参数. */
-	out_channels = play->m_audio_ctx->channels;
+	out_channels = 2;//FFMIN(play->m_audio_ctx->channels, 2);
 
 	bytes_per_sample = av_get_bytes_per_sample(play->m_audio_ctx->sample_fmt);
 	/* 备注: 由于 src->linesize[0] 可能是错误的, 所以计算得到的nb_sample会不正确, 直接使用src->nb_samples即可. */
@@ -1046,24 +1046,24 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 	avcodec_fill_audio_frame(dst, out_channels, AV_SAMPLE_FMT_S16, dst->data[0], dst_buf_size, 0);
 
 	/* 重采样到AV_SAMPLE_FMT_S16格式. */
-	if (play->m_audio_ctx->sample_fmt != AV_SAMPLE_FMT_S16)
+	if ((play->m_audio_ctx->sample_fmt != AV_SAMPLE_FMT_S16) || (play->m_audio_ctx->channels > 2))
 	{
-		if (!play->m_swr_ctx)
+		if (!play->m_swrctx_audio)
 		{
 			uint64_t in_channel_layout = av_get_default_channel_layout(play->m_audio_ctx->channels);
 			uint64_t out_channel_layout = av_get_default_channel_layout(out_channels);
-			play->m_swr_ctx = swr_alloc_set_opts(NULL,
+			play->m_swrctx_audio = swr_alloc_set_opts(NULL,
 				out_channel_layout, AV_SAMPLE_FMT_S16, play->m_audio_ctx->sample_rate,
 				in_channel_layout, play->m_audio_ctx->sample_fmt, play->m_audio_ctx->sample_rate,
 				0, NULL);
-			swr_init(play->m_swr_ctx);
+			swr_init(play->m_swrctx_audio);
 		}
 
-		if (play->m_swr_ctx)
+		if (play->m_swrctx_audio)
 		{
 			int ret, out_count;
 			out_count = dst_buf_size / out_channels / av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-			ret = swr_convert(play->m_swr_ctx, dst->data, out_count, src->data, nb_sample);
+			ret = swr_convert(play->m_swrctx_audio, dst->data, out_count, src->data, nb_sample);
 			if (ret < 0)
 				assert(0);
 			src->linesize[0] = dst->linesize[0] = ret * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16) * out_channels;
@@ -1072,11 +1072,12 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 	}
 
 	/* 重采样到双声道. */
+#if 0
 	if (play->m_audio_ctx->channels > 2)
 	{
 		if (!play->m_resample_ctx)
 		{
-			play->m_resample_ctx = av_audio_resample_init(
+			play->m_resample_ctx = av_resample_init(); av_audio_resample_init(
 					FFMIN(2, play->m_audio_ctx->channels),
 					play->m_audio_ctx->channels, play->m_audio_ctx->sample_rate,
 					play->m_audio_ctx->sample_rate, AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S16,
@@ -1090,11 +1091,12 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 				(short *) dst->data[0], (short *) src->data[0], samples) * 4;
 		}
 	}
-	else
+#	else
 	{
 		dst->linesize[0] = dst->linesize[0];
 		memcpy(dst->data[0], src->data[0], dst->linesize[0]);
 	}
+#endif
 }
 
 static
@@ -1110,15 +1112,15 @@ void video_copy(avplay *play, AVFrame *dst, AVFrame *src)
 	avpicture_fill((AVPicture*) &(*dst), buffer, PIX_FMT_YUV420P,
 			play->m_video_ctx->width, play->m_video_ctx->height);
 
-	play->m_swsctx = sws_getContext(play->m_video_ctx->width,
+	play->m_swsctx_video = sws_getContext(play->m_video_ctx->width,
 			play->m_video_ctx->height, play->m_video_ctx->pix_fmt,
 			play->m_video_ctx->width, play->m_video_ctx->height,
 			PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
 
-	sws_scale(play->m_swsctx, src->data, src->linesize, 0,
+	sws_scale(play->m_swsctx_video, src->data, src->linesize, 0,
 			play->m_video_ctx->height, dst->data, dst->linesize);
 
-	sws_freeContext(play->m_swsctx);
+	sws_freeContext(play->m_swsctx_video);
 }
 
 static
@@ -1713,7 +1715,7 @@ void* audio_render_thrd(void *param)
 				inited = 1;
 				/* 配置渲染器. */
 				ret = play->m_ao_ctx->init_audio(play->m_ao_ctx,
-					FFMIN(play->m_audio_ctx->channels, 2), 16, play->m_audio_ctx->sample_rate, 0);
+					2, av_get_bytes_per_sample(AV_SAMPLE_FMT_S16), play->m_audio_ctx->sample_rate, 0);
 				if (ret != 0)
 					inited = -1;
 				else
@@ -1722,7 +1724,7 @@ void* audio_render_thrd(void *param)
 					play->m_play_status = playing;
 				}
 				bytes_per_sec = play->m_audio_ctx->sample_rate *
-					FFMIN(play->m_audio_ctx->channels, 2) * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
+					2 * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
 				/* 修改音频设备初始化状态, 置为1. */
 				if (inited != -1)
 					play->m_ao_inited = 1;

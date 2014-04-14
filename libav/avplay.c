@@ -1034,7 +1034,7 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 	dst->type = 0;
 
 	/* 备注: FFMIN(play->m_audio_ctx->channels, 2); 会有问题, 因为swr_alloc_set_opts的out_channel_layout参数. */
-	out_channels = 2;//FFMIN(play->m_audio_ctx->channels, 2);
+	out_channels = (play->m_audio_ctx->channels>2)?2:play->m_audio_ctx->channels;
 
 	bytes_per_sample = av_get_bytes_per_sample(play->m_audio_ctx->sample_fmt);
 	/* 备注: 由于 src->linesize[0] 可能是错误的, 所以计算得到的nb_sample会不正确, 直接使用src->nb_samples即可. */
@@ -1066,37 +1066,10 @@ void audio_copy(avplay *play, AVFrame *dst, AVFrame* src)
 			ret = swr_convert(play->m_swrctx_audio, dst->data, out_count, src->data, nb_sample);
 			if (ret < 0)
 				assert(0);
-			src->linesize[0] = dst->linesize[0] = ret * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16) * out_channels;
-			memcpy(src->data[0], dst->data[0], src->linesize[0]);
 		}
 	}
-
-	/* 重采样到双声道. */
-#if 0
-	if (play->m_audio_ctx->channels > 2)
-	{
-		if (!play->m_resample_ctx)
-		{
-			play->m_resample_ctx = av_resample_init(); av_audio_resample_init(
-					FFMIN(2, play->m_audio_ctx->channels),
-					play->m_audio_ctx->channels, play->m_audio_ctx->sample_rate,
-					play->m_audio_ctx->sample_rate, AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S16,
-					16, 10, 0, 0.f);
-		}
-
-		if (play->m_resample_ctx)
-		{
-			int samples = src->linesize[0] / (av_get_bytes_per_sample(AV_SAMPLE_FMT_S16) * play->m_audio_ctx->channels);
-			dst->linesize[0] = audio_resample(play->m_resample_ctx,
-				(short *) dst->data[0], (short *) src->data[0], samples) * 4;
-		}
-	}
-#	else
-	{
-		dst->linesize[0] = dst->linesize[0];
-		memcpy(dst->data[0], src->data[0], dst->linesize[0]);
-	}
-#endif
+    else
+        memcpy (dst->data[0], src->data[0], src->linesize[0]);
 }
 
 static

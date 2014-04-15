@@ -22,7 +22,7 @@
 #include <string>
 #include <queue>
 #include <sys/socket.h>
-#include <SDL/SDL_audio.h>
+#include <SDL2/SDL_audio.h>
 #include <boost/thread/condition.hpp>
 
 #include <avplay.h>

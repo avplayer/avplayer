@@ -23,7 +23,7 @@ extern          "C" {
 }
 #include <boost/scope_exit.hpp>
 #include <avplay.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include "sdl_render.h"
 #ifdef  __cplusplus
 extern          "C" {

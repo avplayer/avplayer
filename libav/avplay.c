@@ -30,7 +30,13 @@ enum bool_type
 #define SEEKING_FLAG			-1
 #define NOSEEKING_FLAG			0
 
-#ifndef _MSC_VER
+#ifdef __APPLE__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#define CLOCK_MONOTONIC SYSTEM_CLOCK
+#endif
+
+#if (defined __linux) || (defined __APPLE__)
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
@@ -55,8 +61,9 @@ int64_t av_gettime()
 	clock_gettime(CLOCK_MONOTONIC,&cltime);
 	return cltime.tv_sec * 1000000 + cltime.tv_nsec / 1000;
 }
+#endif
 
-#else
+#ifdef _MSC_VER
 #define av_gettime() (timeGetTime() * 1000.0f)
 #endif
 

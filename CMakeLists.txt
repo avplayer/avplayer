@@ -12,6 +12,7 @@ set(Boost_USE_STATIC_RUNTIME    ON)
 
 find_package( Boost 1.50 REQUIRED COMPONENTS thread filesystem)
 find_package( ffmpeg REQUIRED)
+find_package( X11 REQUIRED)
 
 add_definitions(-D__STDC_CONSTANT_MACROS)
 
@@ -19,6 +20,7 @@ add_definitions(-D__STDC_CONSTANT_MACROS)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${FFMPEG_INCLUDE_DIR})
+include_directories(${X11_INCLUDE_DIR})
 include_directories(libav/)
 include_directories(source/)
 include_directories(audio/)
